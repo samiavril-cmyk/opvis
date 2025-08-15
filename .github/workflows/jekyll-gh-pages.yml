@@ -16,6 +16,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 🔎 Finde automatisch den Ordner, der eine package.json enthält
+      - name: Detect package.json directory
+        id: detect
+        shell: bash
+        run: |
+          set -e
+          PKG_DIR="$(git ls-files | grep -E '(^|/)package.json$' | head -n1 | xargs dirname)"
+          if [ -z "$PKG_DIR" ]; then
+            echo "❌ Keine package.json im Repo gefunden." >&2
+            exit 2
+          fi
+          echo "Gefundener Projektordner: $PKG_DIR"
+          echo "PKG_DIR=$PKG_DIR" >> $GITHUB_ENV
+
+      - name: Show tree (debug)
+        run: |
+          echo "Repo-Root:"
+          ls -la
+          echo "Projektordner ($PKG_DIR):"
+          ls -la "$PKG_DIR"
+        env:
+          PKG_DIR: ${{ env.PKG_DIR }}
+
       - name: Node setup
         uses: actions/setup-node@v4
         with:
@@ -26,26 +49,29 @@ jobs:
           node -v
           npm -v
 
-      # Wichtig: Ohne package-lock.json -> npm install (nicht npm ci)
+      # 💡 Kein package-lock nötig -> npm install (nicht npm ci)
       - name: Install deps
         run: npm install --no-audit --no-fund
+        working-directory: ${{ env.PKG_DIR }}
 
-      # Falls dein package.json kein "lint" Script hat, würde der Schritt scheitern.
-      # Deshalb Lint weggelassen, um Exit 2 zu vermeiden.
-
-      - name: Build (force base for GitHub Pages under /opvis/)
+      # 🏗️ Build mit korrektem Base für Pages unter /opvis/
+      - name: Build (force base)
         run: |
           CI=false npm run build -- --base=/opvis/
+        working-directory: ${{ env.PKG_DIR }}
 
+      # 🧩 SPA-Fallback & Jekyll deaktivieren
       - name: SPA fallback + disable Jekyll
         run: |
           cp docs/index.html docs/404.html
           touch docs/.nojekyll
+        working-directory: ${{ env.PKG_DIR }}
 
+      # ⬆️ Artefakte hochladen (aus dem richtigen Ordner)
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs
+          path: ${{ env.PKG_DIR }}/docs
 
   deploy:
     needs: build
