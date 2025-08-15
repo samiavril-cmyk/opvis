@@ -19,20 +19,19 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          # Kein Cache nötig solange kein Lockfile im Repo liegt
 
-      # Wichtig: Ohne package-lock.json -> npm install statt npm ci
+      # Ohne package-lock.json -> npm install (nicht npm ci)
       - run: npm install
 
       - run: npm run lint
 
-      # Erzwinge korrekten Base-Pfad für GitHub Pages unter /opvis/
+      # Erzwinge korrekten Base-Pfad für /opvis/
       - run: npm run build -- --base=/opvis/
 
-      # SPA-Fallback (Deep Links 404 -> index.html)
+      # SPA-Fallback für Deep-Links
       - run: cp docs/index.html docs/404.html
 
-      # Jekyll sicher deaktivieren
+      # Jekyll vorsorglich deaktivieren
       - run: touch docs/.nojekyll
 
       - uses: actions/upload-pages-artifact@v3
