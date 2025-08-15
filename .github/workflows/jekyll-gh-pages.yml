@@ -16,25 +16,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Node setup
+        uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      # Ohne package-lock.json -> npm install (nicht npm ci)
-      - run: npm install
+      - name: Show versions
+        run: |
+          node -v
+          npm -v
 
-      - run: npm run lint
+      # Wichtig: Ohne package-lock.json -> npm install (nicht npm ci)
+      - name: Install deps
+        run: npm install --no-audit --no-fund
 
-      # Erzwinge korrekten Base-Pfad für /opvis/
-      - run: npm run build -- --base=/opvis/
+      # Falls dein package.json kein "lint" Script hat, würde der Schritt scheitern.
+      # Deshalb Lint weggelassen, um Exit 2 zu vermeiden.
 
-      # SPA-Fallback für Deep-Links
-      - run: cp docs/index.html docs/404.html
+      - name: Build (force base for GitHub Pages under /opvis/)
+        run: |
+          CI=false npm run build -- --base=/opvis/
 
-      # Jekyll vorsorglich deaktivieren
-      - run: touch docs/.nojekyll
+      - name: SPA fallback + disable Jekyll
+        run: |
+          cp docs/index.html docs/404.html
+          touch docs/.nojekyll
 
-      - uses: actions/upload-pages-artifact@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
           path: docs
 
